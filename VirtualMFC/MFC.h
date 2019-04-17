@@ -6,70 +6,179 @@
 ***********************************************************************************/
 #pragma once
 #include <iostream>
+#include "commondefine.h"
 
-namespace minimfc
+NAMESPACE_BEGIN
+
+struct CObject;
+struct MyStruct;
+
+#define MY_RUNTIME_CLASS(className) (&className::class##className)
+#define MY_DECLARE_DYNAMIC(className) \
+public:\
+	static CRunTimeClass class##className; \
+	virtual CRunTimeClass* GetRunTimeClass() const;\
+
+#define MY_IMPLEMENT_DYNAMIC(className,baseClassName) \
+	static char* sz##className = #className;\
+	CRunTimeClass className::class##className = \
+	{\
+		sz##className,\
+		sizeof(className),\
+		MY_RUNTIME_CLASS(baseClassName),\
+	};\
+	static MyStruct init##className(&className::class##className);\
+	CRunTimeClass* className::GetRunTimeClass() const\
+	{\
+		return &className::class##className;\
+	}\
+
+#define MY_DECLARE_DYNCREATE(className) \
+	MY_DECLARE_DYNAMIC(className)\
+	static CObject* CreateObject();\
+
+#define MY_IMPLEMENT_DYNCREATE(className,baseClassName) \
+	static char* sz##className = #className;\
+	CRunTimeClass className::class##className = \
+	{\
+		sz##className,\
+		sizeof(className),\
+		MY_RUNTIME_CLASS(baseClassName),\
+		className::CreateObject\
+	};\
+	static MyStruct init##className(&className::class##className);\
+	CRunTimeClass* className::GetRunTimeClass() const\
+	{\
+		return &className::class##className;\
+	}\
+	CObject* className::CreateObject()\
+	{\
+		return new className;\
+	}\
+
+
+struct CRunTimeClass
 {
-	struct CObject
+	using FuncCreate = CObject*(*)(void);
+
+	CRunTimeClass(){}
+	CRunTimeClass(char* pName, int nClassSize, CRunTimeClass* pClass)
 	{
-		CObject();
-		~CObject();
-	};
+		pClassName = pName;
+		nSize = nClassSize;
+		pBaseClass = pClass;
+	}
 
-	struct CCmdTarget :public CObject
+	CRunTimeClass(char* pName, int nClassSize, CRunTimeClass* pClass, FuncCreate pFun)
 	{
-		CCmdTarget();
-		~CCmdTarget();
-	};
+		pClassName = pName;
+		nSize = nClassSize;
+		pBaseClass = pClass;
+		m_pfnCreateObject = pFun;
+	}
 
-	struct CWinThread :public CCmdTarget
+	CObject* CreateObject()
 	{
-		CWinThread();
-		~CWinThread();
-	};
+		if (m_pfnCreateObject)
+		{
+			return m_pfnCreateObject();
+		}
+		return nullptr;
+	}
 
-	struct CWnd :public CCmdTarget
+	static CRunTimeClass* pFirstClass;
+
+	char* pClassName = nullptr;
+	int nSize = 0;
+
+	CRunTimeClass* pNextClass = nullptr;
+	CRunTimeClass* pBaseClass = nullptr;
+	FuncCreate m_pfnCreateObject = nullptr;
+};
+
+struct MyStruct
+{
+	MyStruct(CRunTimeClass *pClass)
 	{
-		CWnd();
-		~CWnd();
-
-		virtual void Create();
-		virtual void CreateEx();
-		virtual void PreCreateWnd();
+		pClass->pNextClass = CRunTimeClass::pFirstClass;
+		CRunTimeClass::pFirstClass = pClass;
 	};
+};
 
-	struct CWinApp :public CWinThread
-	{
-		CWinApp();
-		~CWinApp();
-		CWinApp* m_pCurWinApp = nullptr;
-		CWnd* m_pWnd = nullptr;
+struct CObject
+{
+	CObject();
+	~CObject();
 
-		virtual void InitApplication() = 0;
-		virtual void InitInstance() = 0;
-		virtual void Run();
-	};
+	bool IsKindOf(CRunTimeClass *pClass);
 
-	struct CView :public CWnd
-	{
-		CView();
-		~CView();
-	};
+	static CRunTimeClass classCObject;
+	virtual CRunTimeClass* GetRunTimeClass() const;
+};
 
-	struct CFrameWnd :public CWnd
-	{
-		CFrameWnd();
-		~CFrameWnd();
+struct CCmdTarget :public CObject
+{
+	MY_DECLARE_DYNAMIC(CCmdTarget)
+	CCmdTarget();
+	~CCmdTarget();
+};
 
-		virtual void Create();
-		virtual void PreCreateWnd();
-	};
+struct CWinThread :public CCmdTarget
+{
+	MY_DECLARE_DYNAMIC(CWinThread)
+	CWinThread();
+	~CWinThread();
+};
 
-	struct CDocument :public CCmdTarget
-	{
-		CDocument();
-		~CDocument();
-	};
+struct CWnd :public CCmdTarget
+{
+	MY_DECLARE_DYNCREATE(CWnd)
+	CWnd();
+	~CWnd();
 
-	//全局函数
-	CWinApp* AfxGetApp();
-}
+	virtual void Create();
+	virtual void CreateEx();
+	virtual void PreCreateWnd();
+};
+
+struct CWinApp :public CWinThread
+{
+	MY_DECLARE_DYNAMIC(CWinApp)
+	CWinApp();
+	~CWinApp();
+	CWinApp* m_pCurWinApp = nullptr;
+	CWnd* m_pWnd = nullptr;
+
+	virtual void InitApplication() = 0;
+	virtual void InitInstance() = 0;
+	virtual void Run();
+};
+
+struct CView :public CWnd
+{
+	MY_DECLARE_DYNAMIC(CView)
+	CView();
+	~CView();
+};
+
+struct CFrameWnd :public CWnd
+{
+	MY_DECLARE_DYNCREATE(CFrameWnd)
+	CFrameWnd();
+	~CFrameWnd();
+
+	virtual void Create();
+	virtual void PreCreateWnd();
+};
+
+struct CDocument :public CCmdTarget
+{
+	MY_DECLARE_DYNAMIC(CDocument)
+	CDocument();
+	~CDocument();
+};
+
+//全局函数
+CWinApp* AfxGetApp();
+
+NAMESPACE_END

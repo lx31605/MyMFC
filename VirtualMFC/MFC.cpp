@@ -10,119 +10,158 @@
 
 extern CWinMyApp theApp;
 
-minimfc::CObject::CObject()
+NAMESPACE_BEGIN
+
+CRunTimeClass* CRunTimeClass::pFirstClass = nullptr;
+
+MY_IMPLEMENT_DYNAMIC(CCmdTarget, CObject)
+MY_IMPLEMENT_DYNAMIC(CWinThread, CCmdTarget)
+MY_IMPLEMENT_DYNAMIC(CWinApp, CWinThread)
+MY_IMPLEMENT_DYNAMIC(CView, CWnd)
+MY_IMPLEMENT_DYNAMIC(CDocument, CCmdTarget)
+MY_IMPLEMENT_DYNCREATE(CWnd, CCmdTarget)
+MY_IMPLEMENT_DYNCREATE(CFrameWnd, CWnd)
+
+CObject::CObject()
 {
 
 }
 
-minimfc::CObject::~CObject()
+CObject::~CObject()
 {
 
 }
 
-minimfc::CCmdTarget::CCmdTarget()
+bool CObject::IsKindOf(CRunTimeClass *pClass)
+{
+	//虚函数，基类可以拿到自己的静态成员变量
+	auto pCurClass = GetRunTimeClass();
+	while (pCurClass)
+	{
+		if (pCurClass == pClass)
+		{
+			return true;
+		}
+		pCurClass = pCurClass->pBaseClass;
+	}
+	return false;
+}
+
+CRunTimeClass CObject::classCObject = { "CObject", sizeof(CObject), NULL };
+static MyStruct initCObject(&CObject::classCObject);
+
+CRunTimeClass* CObject::GetRunTimeClass() const
+{
+	return &CObject::classCObject;
+}
+
+CCmdTarget::CCmdTarget()
 {
 
 }
 
-minimfc::CCmdTarget::~CCmdTarget()
+CCmdTarget::~CCmdTarget()
 {
 
 }
 
-minimfc::CWinThread::CWinThread()
+CWinThread::CWinThread()
 {
 
 }
 
-minimfc::CWinThread::~CWinThread()
+CWinThread::~CWinThread()
 {
 
 }
 
-minimfc::CWinApp::CWinApp()
+CWinApp::CWinApp()
 {
 	m_pCurWinApp = this;
 }
 
-minimfc::CWinApp::~CWinApp()
+CWinApp::~CWinApp()
 {
 
 }
 
-void minimfc::CWinApp::Run()
+void CWinApp::Run()
 {
 	std::cout << "CWinApp::Run! \n";
 }
 
-minimfc::CWnd::CWnd()
+CWnd::CWnd()
+{
+	Create();
+}
+
+CWnd::~CWnd()
 {
 
 }
 
-minimfc::CWnd::~CWnd()
-{
-
-}
-
-void minimfc::CWnd::Create()
+void CWnd::Create()
 {
 	std::cout << "CWnd::Create! \n";
 }
 
-void minimfc::CWnd::CreateEx()
+void CWnd::CreateEx()
 {
 	std::cout << "CWnd::CreateEx! \n";
 	PreCreateWnd();
 }
 
-void minimfc::CWnd::PreCreateWnd()
+void CWnd::PreCreateWnd()
 {
 	std::cout << "CWnd::PreCreateWnd! \n";
 }
 
-minimfc::CView::CView()
+CView::CView()
 {
 
 }
 
-minimfc::CView::~CView()
+CView::~CView()
 {
 
 }
 
-minimfc::CFrameWnd::CFrameWnd()
+CFrameWnd::CFrameWnd()
 {
 	Create();
 }
 
-minimfc::CFrameWnd::~CFrameWnd()
+CFrameWnd::~CFrameWnd()
 {
 
 }
 
-void minimfc::CFrameWnd::Create()
+void CFrameWnd::Create()
 {
 	std::cout << "CFrameWnd::Create! \n";
 	CreateEx();
 }
 
-void minimfc::CFrameWnd::PreCreateWnd()
+void CFrameWnd::PreCreateWnd()
 {
 	std::cout << "CFrameWnd::PreCreateWnd! \n";
 }
 
-minimfc::CDocument::CDocument()
+CDocument::CDocument()
 {
 
 }
 
-minimfc::CDocument::~CDocument()
+CDocument::~CDocument()
 {
 
 }
 
-minimfc::CWinApp* minimfc::AfxGetApp()
+CWinApp* AfxGetApp()
 {
 	return theApp.m_pCurWinApp;
 }
+
+
+
+NAMESPACE_END
